@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+         
+    <parent>
+        <artifactId>brooklyn-ui-modules-parent</artifactId>
+        <groupId>org.apache.brooklyn.ui.modules</groupId>
+        <version>${revision}</version>
+    </parent>
+    
+    <artifactId>brooklyn-ui-modules-features</artifactId>
+    <packaging>kar</packaging>
+    <name>Brooklyn UI :: Modules - Features</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.karaf.features</groupId>
+            <artifactId>framework</artifactId>
+            <type>kar</type>
+            <exclusions>
+                <!-- pulled in below at our preferred version (more recent) -->
+                <exclusion>
+                    <groupId>javax.annotation</groupId>
+                    <artifactId>javax.annotation-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.karaf.features</groupId>
+            <artifactId>standard</artifactId>
+            <classifier>features</classifier>
+            <version>${karaf.version}</version>
+            <type>xml</type>
+        </dependency>
+        
+        <dependency>
+            <!-- ensure this version, not karaf's version -->
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+            <version>${jakarta.annotation-api.version}</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.apache.brooklyn.ui.modules</groupId>
+            <artifactId>brooklyn-ui-home</artifactId>
+            <version>${project.version}</version>
+            <type>war</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.brooklyn.ui.modules</groupId>
+            <artifactId>brooklyn-ui-logout</artifactId>
+            <version>${project.version}</version>
+            <type>war</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.brooklyn.ui.modules</groupId>
+            <artifactId>brooklyn-ui-app-inspector</artifactId>
+            <version>${project.version}</version>
+            <type>war</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.brooklyn.ui.modules</groupId>
+            <artifactId>brooklyn-ui-blueprint-composer</artifactId>
+            <version>${project.version}</version>
+            <type>war</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.brooklyn.ui.modules</groupId>
+            <artifactId>brooklyn-ui-blueprint-importer</artifactId>
+            <version>${project.version}</version>
+            <type>war</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.brooklyn.ui.modules</groupId>
+            <artifactId>brooklyn-ui-catalog</artifactId>
+            <version>${project.version}</version>
+            <type>war</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.brooklyn.ui.modules</groupId>
+            <artifactId>brooklyn-ui-groovy-console</artifactId>
+            <version>${project.version}</version>
+            <type>war</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.brooklyn.ui.modules</groupId>
+            <artifactId>brooklyn-ui-location-manager</artifactId>
+            <version>${project.version}</version>
+            <type>war</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.brooklyn.ui.modules</groupId>
+            <artifactId>brooklyn-ui-rest-api-docs</artifactId>
+            <version>${project.version}</version>
+            <type>war</type>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.karaf.tooling</groupId>
+                <artifactId>karaf-maven-plugin</artifactId>
+                <version>${karaf.plugin.version}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <startLevel>100</startLevel>
+                </configuration>
+
+                <executions>
+                  <execution>
+                    <!-- override this id so that 'verify' doesn't run by default, as this mojo sets system property karaf.home = target/karaf which can break subsequent KAR builds -->
+                    <id>default-verify</id>
+                    <phase>NEVER</phase>
+                  </execution>
+                </executions>
+
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

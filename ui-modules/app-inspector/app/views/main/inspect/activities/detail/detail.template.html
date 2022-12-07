@@ -1,0 +1,381 @@
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+-->
+<ui-view class="activity-any">
+    <div>
+        <loading-state error="vm.error" trust-error="true" ng-if="!vm.model.activity.id || !vm.model.activityChildren"></loading-state>
+
+        <div ng-if="vm.model.activity.id && vm.model.activityChildren">
+            <ol class="breadcrumb" ng-show="showParents">
+                <li breadcrumb-navigation parent-id="{{vm.model.activity.submittedByTask.metadata.id}}"
+                    entity-id="{{vm.model.entityId}}"></li>
+                <li class="breadcrumb-item active">{{vm.model.activity.displayName}}</li>
+            </ol>
+            <ol class="breadcrumb" ng-show="!showParents && vm.model.activity.submittedByTask">
+                <li ng-click="showParents=true" class="revealParentsEllipse"> ...</li>
+                <li class="breadcrumb-item">
+                    <a class="breadcrumb-item ready"
+                       ui-sref="main.inspect.activities.detail({entityId: vm.model.entityId, activityId: vm.model.activity.submittedByTask.metadata.id})">{{vm.model.activity.submittedByTask.metadata.taskName}}</a>
+                </li>
+                <li class="breadcrumb-item active">{{vm.model.activity.displayName}}</li>
+            </ol>
+        </div>
+
+        <div>
+            <div class="activity-detail">
+
+                <div class="alert alert-info" ng-if="vm.model.activity.blockingTask">
+                    <strong>Blocked on:</strong>
+                    <span ng-if="vm.model.activity.blockingDetails">{{vm.model.activity.blockingDetails}}:</span>
+                    <code><a ui-sref="main.inspect.activities.detail({entityId: vm.model.activity.blockingTask.metadata.entityId, activityId: vm.model.activity.blockingTask.metadata.id})">{{vm.model.activity.blockingTask.metadata.taskName}}</a></code> for <strong><a ui-sref="main.inspect.summary({entityId: vm.model.activity.blockingTask.metadata.entityId})">{{vm.model.activity.blockingTask.metadata.entityDisplayName}} entity</a></strong>
+                </div>
+
+                <div style="float:right; margin-left: 1em;" ng-if="vm.isNonEmpty(actions)" class="btn-group dropdown-nested dropdown-menu-right" uib-dropdown-nested dropdown-append-to-body="true">
+                    <br-button uib-dropdown-toggle-nested type="btn-primary">
+                        Actions <span class="caret"></span>
+                    </br-button>
+                    <ul uib-dropdown-menu-nested class="dropdown-at-root dropdown-menu-right">
+
+                        <li><a href="" ng-if="actions.cancel" ng-click="actions.cancel.doAction()">{{actions.cancel.label}}</a></li>
+
+                        <li ng-if="actions.workflowReplays" uib-dropdown-nested dropdown-append-to-body="true">
+
+                            <a href="" uib-dropdown-toggle-nested>Replay workflow <span class="caret"></span></a>
+                            <ul class="dropdown-submenu-left dropdown-at-root dropdown-menu-right" uib-dropdown-menu-nested>
+                                <li ng-repeat="replay in actions.workflowReplays track by $index" id="replay-{{replay.targetId}}">
+                                    <a class="dropdown-item" href="" ng-click="replay.action()">{{ replay.label }}</a>
+                                </li>
+                            </ul>
+
+                        </li>
+
+                        <li><a href="" ng-if="actions.delete" ng-click="actions.delete.doAction()">{{actions.delete.label}}</a></li>
+
+                        <li><a href="" ng-if="actions.invokeAgain" ng-click="actions.invokeAgain.doAction()">Reinvoke effector</a></li>
+                        <li><a href="" ng-if="actions.effector" ui-sref="main.inspect.effectors({search: actions.effector.effectorName})">Open in effector tab</a></li>
+
+                    </ul>
+                </div>
+
+                <div class="activity-header" ng-if="vm.model.activity.id">
+                    <div class="activity-title">{{vm.model.activity.displayName}}</div>
+                    <div class="activity-entity">{{vm.model.activity.entityDisplayName}}</div>
+                    <div class="activity-description" ng-if="vm.model.activity.description">{{vm.model.activity.description}}</div>
+                </div>
+
+                <div class="activity-body">
+                    <div class="summary-body" ng-if="vm.model.activity.id">
+                        <div class="summary-block">
+                            <div class="row">
+                                <div class="col-md-3 summary-item">
+                                    <div class="summary-item-icon">
+                                        <brooklyn-status-icon value="{{vm.model.activity.currentStatus}}"></brooklyn-status-icon>
+                                    </div>
+                                    <div class="summary-item-label">Status</div>
+                                    <div class="summary-item-value">
+                                        <brooklyn-status-text value="{{vm.model.activity.currentStatus}}"></brooklyn-status-text>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 summary-item">
+                                    <div class="summary-item-label">ID</div>
+                                    <div class="summary-item-value monospace">{{::vm.model.activity.id}}</div>
+                                </div>
+                                <div class="col-md-6 summary-item" ng-if="vm.model.activity.result!=undefined">
+                                    <div class="summary-item-label">Result</div>
+                                    <div class="summary-item-value result-parent" ng-class="{ 'big-result': (''+vm.model.activity.result).length > 10 }"><div class="result-body">{{::vm.yaml(vm.model.activity.result)}}</div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="summary-block" ng-mouseenter="showUTC=true" ng-mouseleave="showUTC=false">
+                            <div class="row">
+                                <div ng-if="vm.model.activity.endTimeUtc && vm.model.activity.endTimeUtc>0" class="col-md-3 summary-item summary-item-timestamp">
+                                    <div class="summary-item-icon">
+                                        <div class="icon-stopwatch"></div>
+                                    </div>
+                                    <div class="summary-item-label">Duration</div>
+                                    <div class="summary-item-value">
+                                        <div class="humanized fade" ng-show="!showUTC">
+                                            took {{vm.model.activity.endTimeUtc - vm.model.activity.startTimeUtc | durationFilter}}
+                                        </div>
+                                        <div class="utcTime fade" ng-show="showUTC">
+                                            {{vm.model.activity.endTimeUtc- vm.model.activity.startTimeUtc }} ms
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 summary-item summary-item-timestamp">
+                                    <div class="summary-item-label">Submitted</div>
+                                    <div class="summary-item-value">
+                                        <div class="humanized fade" ng-show="!showUTC || !(vm.model.activity.submitTimeUtc>0)">
+                                            {{vm.model.activity.submitTimeUtc | timeAgoFilter}}
+                                        </div>
+                                        <div class="utcTime fade" ng-show="showUTC && vm.model.activity.submitTimeUtc>0">
+                                            {{vm.model.activity.submitTimeUtc | dateFilter }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 summary-item summary-item-timestamp">
+                                    <div class="summary-item-label">Started</div>
+                                    <div class="summary-item-value">
+                                        <div class="humanized fade" ng-show="!showUTC || !(vm.model.activity.startTimeUtc>0)">
+                                            {{vm.model.activity.startTimeUtc | timeAgoFilter}}
+                                        </div>
+                                        <div class="utcTime fade" ng-show="showUTC && vm.model.activity.startTimeUtc>0">
+                                            {{vm.model.activity.startTimeUtc | dateFilter }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div ng-if="vm.model.activity.endTimeUtc" class="col-md-3 summary-item summary-item-timestamp">
+                                    <div class="summary-item-label">Finished</div>
+                                    <div class="summary-item-value">
+                                        <div class="humanized fade" ng-show="!showUTC || !(vm.model.activity.endTimeUtc>0)">
+                                            {{vm.model.activity.endTimeUtc | timeAgoFilter}}
+                                        </div>
+                                        <div class="utcTime fade" ng-show="showUTC && vm.model.activity.endTimeUtc>0">
+                                            {{vm.model.activity.endTimeUtc | dateFilter }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <br-collapsible class="activity-streams"
+                                    ng-if="vm.isNonEmpty(vm.model.activity.streams)"
+                                    state="vm.model.accordion.streamsOpen">
+                        <heading> Streams</heading>
+
+                        <div ng-repeat="streamId in vm.getStreamIdsInOrder()" ng-init="thisState = { isOpen: false, tail: ['env', 'stdin'].indexOf(streamId) === -1 };">
+                            <br-collapsible state="thisState.isOpen">
+                                <heading class="flex-container">
+                                    <div class="flex-grow">
+                                        {{ streamId }}
+                                        <small>{{streamsById[streamId].metadata.sizeText}}</small>
+                                    </div>
+                                    <div class="flex-no-grow accordion-title-toolbar">
+                                        <a class="accordion-title-toolbar-item" ui-sref="main.inspect.activities.detail.stream({streamId: streamId})" ng-click="$event.stopPropagation()"
+                                                uib-tooltip="Open in new view" tooltip-placement="top" tooltip-popup-delay="500" tooltip-append-to-body="true">
+                                            <i class="fa fa-eye"></i>
+                                        </a>
+                                        <a class="accordion-title-toolbar-item" ng-href="{{streamsById[streamId].link}}" ng-click="$event.stopPropagation()"
+                                                uib-tooltip="Download" tooltip-placement="top" tooltip-popup-delay="500" tooltip-append-to-body="true" download="{{streamId + '.txt'}}">
+                                            <i class="fa fa-download"></i>
+                                        </a>
+                                    </div>
+                                </heading>
+                                <stream ng-if="thisState.isOpen" activity-id="{{vm.model.activityId}}" stream-type="{{streamId}}" tail="thisState.tail"></stream>
+                            </br-collapsible>
+                        </div>
+                    </br-collapsible>
+
+                    <br-collapsible state="vm.model.accordion.workflowOpen"
+                                    ng-if="vm.model.workflow.data">
+                        <heading> Workflow</heading>
+
+                        <div class="workflow-body">
+                            <div ng-if="vm.model.workflow.loading == 'loaded'">
+                                <div ng-if="vm.model.workflow.data.replays.length > 1">
+                                    <div  class="workflow-buttons btn-group" uib-dropdown>
+                                        <button id="replay-button" type="button" class="btn btn-select-dropdown" uib-dropdown-toggle>
+                                            Select replay <span class="caret"></span>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-right dropdown-menu-replays" uib-dropdown-menu role="menu" aria-labelledby="replay-button">
+                                            <li role="menuitem" ng-repeat="replay in vm.model.workflow.data.replays.slice().reverse()" id="workflow-replay-{{ replay.taskId }}">
+                                                <a href="" ui-sref="main.inspect.activities.detail({activityId: replay.taskId, workflowId: workflowId})" ng-class="{'selected' : vm.model.activityId === replay.taskId}">
+                                                    <i class="fa fa-check check if-selected"></i>
+<!--                                                    <span class="monospace">{{ replay.taskId }}</span>-->
+                                                    <span ng-if="replay.reasonForReplay">{{ replay.reasonForReplay }} (</span
+                                                    ><span ng-if="replay.submitTimeUtc>0">{{ replay.submitTimeUtc | dateFilter: 'short' }}</span
+                                                    ><span ng-if="replay.reasonForReplay">)</span>
+
+                                                </a> </li>
+                                            <li role="menuitem">
+                                                <a href="" ng-click="vm.showReplayHelp()" ng-class="{'selected' : showReplayHelp}">
+                                                    <i class="fa fa-check check if-selected"></i>
+                                                    <i>More information</i>
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="workflow-preface-para">
+                                    This task is
+                                    <span ng-if="!vm.isNullish(vm.model.workflow.tag.stepIndex)">for step <b>{{ vm.model.workflow.tag.stepIndex+1 }}</b>
+                                        in
+                                        <span ng-if="vm.model.workflow.runMultipleTimes">
+                                            <span ng-if="vm.model.workflow.runIsOld">a previous run of </span>
+                                            <span ng-if="vm.model.workflow.runIsLatest">the most recent run of </span>
+                                        </span>
+                                        <a ui-sref="main.inspect.activities.detail({entityId: vm.model.entityId, activityId: vm.model.workflow.data.taskId, workflowId})">
+                                            workflow <span class="monospace">{{vm.model.workflow.data.workflowId}}</span>:
+                                            <b>{{vm.model.workflow.data.name}}</b></a>.
+                                    </span>
+                                    <span ng-if="vm.isNullish(vm.model.workflow.tag.stepIndex) && !vm.model.activity.id">
+                                        part of
+                                        workflow <span class="monospace">{{vm.model.workflow.data.workflowId}}</span>:
+                                        <b>{{vm.model.workflow.data.name}}</b>.
+                                    </span>
+                                    <span ng-if="vm.isNullish(vm.model.workflow.tag.stepIndex) && vm.model.activity.id">
+                                        for
+                                        <span ng-if="vm.model.workflow.runIsOld" style="font-weight: bold;">
+                                            a previous run of
+                                            <a ui-sref="main.inspect.activities.detail({entityId: vm.model.entityId, activityId: vm.model.workflow.data.taskId, workflowId})">
+                                                    workflow <span class="monospace">{{vm.model.workflow.data.workflowId}}</span>:
+                                                <b>{{vm.model.workflow.data.name}}</b>.</a>
+                                        </span>
+                                        <span ng-if="!vm.model.workflow.runIsOld">
+                                            <span ng-if="vm.model.workflow.runIsLatest && vm.model.workflow.runMultipleTimes">the most recent run of </span>
+                                            workflow <span class="monospace">{{vm.model.workflow.data.workflowId}}</span>:
+                                            <b>{{vm.model.workflow.data.name}}</b>.
+                                        </span>
+                                        <span ng-if="vm.model.workflow.isError && vm.model.workflow.data.currentStepInstance && vm.model.workflow.data.currentStepInstance.taskId">
+                                            Details of the failure can be found by opening
+                                            <a ui-sref="main.inspect.activities.detail({entityId: vm.model.entityId, activityId: vm.model.workflow.data.currentStepInstance.taskId, workflowId})">
+                                                the failed task</a>.
+                                        </span>
+                                    </span>
+                                </div>
+
+                                <div ng-if="vm.model.workflow.data.parentId" class="workflow-preface-para">
+                                    This is a sub-workflow in
+                                    <b><a ui-sref="main.inspect.activities.detail({entityId: vm.model.entityId, activityId: vm.model.workflow.data.parentId, workflowId: vm.model.workflow.data.parentId, workflowLatestRun: true})">
+                                        workflow <span class="monospace">{{vm.model.workflow.data.parentId}}</span
+                                    ></a></b>.
+                                </div>
+
+                                <div ng-if="vm.model.workflow.finishedWithNoSteps" class="workflow-preface-para">
+                                    The workflow did not run any steps; if this is unexpected, check the conditions on the steps.
+                                </div>
+
+                                <div ng-if="vm.model.workflow.data.errorHandlerTaskId" class="workflow-preface-para">
+                                    <span ng-if="vm.model.activityId==vm.model.workflow.data.errorHandlerTaskId">
+                                        This is the page for the error handler for this workflow.
+                                        More details of how the error was handled can be found in other sections on this page.
+                                    </span>
+                                    <span ng-if="vm.model.activityId!=vm.model.workflow.data.errorHandlerTaskId">
+                                        This workflow had an error which ran error handler
+                                        <b><a ui-sref="main.inspect.activities.detail({entityId: vm.model.entityId, activityId: vm.model.workflow.data.errorHandlerTaskId, workflowId})">
+                                            <span class="monospace">task {{vm.model.workflow.data.errorHandlerTaskId}}</span
+                                        ></a></b>.
+                                    </span>
+                                </div>
+
+                                <div ng-if="vm.model.workflow.runIsOld" class="workflow-preface-para">
+                                    For previous runs such as this, the subtask view
+                                    <span ng-if="!vm.isNullish(vm.model.workflow.tag.stepIndex)">for
+                                        <a ui-sref="main.inspect.activities.detail({entityId: vm.model.entityId, activityId: vm.model.workflow.runReplayId, workflowId})">
+                                            the relevant run
+                                        </a>
+                                    </span>
+                                    <span ng-if="vm.isNullish(vm.model.workflow.tag.stepIndex)">
+                                        <span ng-if="showOldWorkflowRunStepDetails">further</span>
+                                        below
+                                    </span>
+                                    is normally more informative than workflow steps.
+                                    <span ng-if="!showOldWorkflowRunStepDetails">
+                                        However the workflow step view
+                                        <a href="" ng-click="vm.toggleOldWorkflowRunStepDetails()">
+                                            can be shown</a>
+                                        below if desired.
+                                    </span>
+                                    <span ng-if="showOldWorkflowRunStepDetails">
+                                        The workflow step view immediately below
+                                        <a href="" ng-click="vm.toggleOldWorkflowRunStepDetails()">
+                                            can be hidden</a>.
+                                    </span>
+                                </div>
+
+                                <div ng-if="showReplayHelp" class="workflow-preface-para">
+                                    Workflows can be replayed in certain situations, such as if they fail or the server is restarted.
+                                    This workflow invocation instance has been replayed, with a total of {{ vm.model.workflow.data.taskIds.length }} runs.
+                                    Individual replays can be viewed by selecting a task ID from the dropdown.
+                                    The workflow step data below shows the most recent run of each step in any replay.
+                                    The arrows between steps show all step transitions in any replay of this workflow instance.
+                                    Sub-task and log views further below can be useful to disambiguate multiple replays if required.
+                                </div>
+
+                                <workflow-steps workflow="vm.model.workflow" task="vm.model.activity" ng-if="!vm.model.workflow.runIsOld || showOldWorkflowRunStepDetails"></workflow-steps>
+                            </div>
+                            <div ng-if="vm.model.workflow.loading != 'loaded'">
+                                <loading-state error="vm.model.workflow.loading !== 'loading' ? 'Details of this workflow are no longer available.' : ''"></loading-state>
+                            </div>
+                        </div>
+                    </br-collapsible>
+
+                    <br-collapsible state="vm.model.accordion.subTaskOpen"
+                                    ng-if="vm.model.activityChildren && vm.model.activityChildren.length > 0">
+                        <heading> Sub-tasks</heading>
+
+                        <div class="row">
+                            <div ng-class="{ 'col-md-12': true, 'col-lg-8': !vm.wideKilt && vm.isNonEmpty(vm.model.activitiesDeep), 'col-lg-12': vm.wideKilt || !vm.isNonEmpty(vm.model.activitiesDeep)}">
+                                <task-list tasks="vm.model.activityChildren" parent-task-id="vm.model.activityId" filtered-callback="vm.onFilteredActivitiesChange"></task-list>
+                            </div>
+                            <div ng-class="{ 'col-md-12': true, 'col-lg-4': !vm.wideKilt, 'col-lg-12': vm.wideKilt }" ng-if="vm.isNonEmpty(vm.model.activitiesDeep)">
+                                <expandable-panel expandable-template="vm.modalTemplate" class="panel-table">
+                                    <heading>Kilt Diagram</heading>
+                                    <extra-buttons>
+                                        <button class="visible-lg-inline-block btn btn-link title-toolbar-item" ng-click="vm.setWideKilt(!vm.wideKilt)"
+                                                uib-tooltip="{{ vm.wideKilt ? 'Side-by-side' : 'Full-width' }}" tooltip-placement="top" tooltip-popup-delay="500" tooltip-append-to-body="true">
+                                            <i class="fa" ng-class="{ 'fa-indent': vm.wideKilt, 'fa-outdent': !vm.wideKilt }"></i></button>
+                                    </extra-buttons>
+                                    <h4 class="text-center" ng-if="!vm.isNonEmpty(vm.model.activitiesDeep)">No tasks</h4>
+                                    <task-sunburst task-type="activity" tasks="vm.model.activitiesDeep" exclude-transient="globalFilters && globalFilters.transient && !globalFilters.transient.include" ng-if="vm.isNonEmpty(vm.model.activitiesDeep)"></task-sunburst>
+                                </expandable-panel>
+                            </div>
+                        </div>
+                    </br-collapsible>
+
+                    <br-collapsible ng-if="vm.model.activity.detailedStatus" state="vm.model.accordion.detailsOpen">
+                        <heading> Details</heading>
+                        <pre>{{vm.model.activity.detailedStatus}}</pre>
+                    </br-collapsible>
+
+                    <br-collapsible ng-if="workflow_yaml" state="vm.model.accordion.workflowYamlOpen">
+                        <heading> Workflow Definition</heading>
+                        <div class="blueprint-copy-holder">
+                            <a class="text-muted blueprint-button" ng-click="vm.openInRunModel(workflow_yaml)"
+                               title="Open in Run Workflow">
+                                <i class="fa fa-arrow-circle-o-right"></i>
+                            </a>
+                        </div>
+                        <pre>{{workflow_yaml}}</pre>
+                    </br-collapsible>
+
+                    <br-collapsible ng-if="vm.model.activity.id || vm.model.workflow.data" state="vm.model.accordion.jsonOpen">
+                        <heading> JSON</heading>
+                        <b>Activity</b>
+                        <pre>{{vm.stringify(vm.model.activity)}}</pre>
+                        <div ng-if="vm.model.workflow.data">
+                            <b>Workflow</b>
+                            <pre>{{vm.stringify(vm.model.workflow)}}</pre>
+                        </div>
+                    </br-collapsible>
+
+                    <div>
+                        <br-collapsible state="vm.model.accordion.logbookOpen">
+                            <heading> Logbook (activity)</heading>
+                            <br-logbook task-id="{{vm.model.activityId}}"></br-logbook>
+                        </br-collapsible>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+</ui-view>

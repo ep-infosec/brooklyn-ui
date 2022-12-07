@@ -1,0 +1,158 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+.entity-node {
+  padding-top: 1rem;
+  border-radius: 0 !important;
+  color: @brand-primary;
+
+  & & {
+    margin-left: 3rem;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .popover {
+    color:@brand-primary;
+    max-width: 1500px; /* optional max width */
+  }
+  .info-table td {
+    overflow:hidden;
+    white-space:nowrap;
+  }
+
+  .entity-node-item {
+    display: flex;
+    align-items: center;
+    background-color: #fff;
+    border: 1px solid @well-border;
+    border-radius: @border-radius-base;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    // transition: all .2s ease-in-out;
+    // transition disabled because on chrome colours are not restored afterwards
+    // https://bugs.chromium.org/p/chromium/issues/detail?id=265303
+    transition: none;
+    &.highlight {
+      animation: fadeOut 1s;
+      -webkit-animation: fadeOut 1s;
+      -moz-animation: fadeOut 1s;
+      -o-animation: fadeOut 1s;
+      -ms-animation: fadeOut 1s;
+    }
+    &:hover {
+      background-color: @body-bg;
+    }
+    &.active {
+      color: #fff;
+      background-color: @brand-primary;
+      .node-icon {
+        img {
+          borde-radius: 3px; //need to trim edge so that blurred white forced bg hides it
+        }
+      }
+    }
+
+    .entity-node-link {
+      flex-grow: 1;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+
+      brooklyn-status-icon {
+        width: 25px;
+        height: 25px;
+        flex-shrink: 0;
+      }
+      span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex-grow: 1;
+        padding-top: 3px;
+        margin-left: 10px;
+      }
+    }
+    .entity-node-toggle-wrapper {
+      width: 38px;      
+      flex-grow: 0;
+    }
+    .entity-node-toggle {
+      width: 38px;      
+      padding: 12px;
+      cursor: row-resize;
+    }
+  }
+  .node-icon {
+    margin-left: 10px;
+    flex-grow: 0 !important;
+    display: flex;
+    align-items: center;
+    background-color: #fff;
+    box-shadow: 0 0 2px 2px #fff;
+    border-radius: 3px;
+
+    max-height: 36px;
+    max-width: 36px;
+
+    overflow: visible !important;
+    img {
+      .make-icon(36px);
+    }
+  }
+
+  // remove spacing between child entities (but preserve it between top-level applications)
+  .entity-node {
+    padding-top: 0;
+    margin-top: -1px;
+  }
+
+  @keyframes fadeOut {
+    0% {background-color: lighten(@brand-primary, 50%);}
+    50% {background-color: lighten(@brand-primary, 50%);}
+    100% {background-color: transparent}
+  }
+
+  @-moz-keyframes fadeOut {
+    0% {background-color: lighten(@brand-primary, 50%);}
+    50% {background-color: lighten(@brand-primary, 50%);}
+    100% {background-color: transparent}
+  }
+
+  @-webkit-keyframes fadeOut {
+    0% {background-color: lighten(@brand-primary, 50%);}
+    50% {background-color: lighten(@brand-primary, 50%);}
+    100% {background-color: transparent}
+  }
+
+  @-o-keyframes fadeOut {
+    0% {background-color: lighten(@brand-primary, 50%);}
+    50% {background-color: lighten(@brand-primary, 50%);}
+    100% {background-color: transparent}
+  }
+
+  @-ms-keyframes fadeOut {
+    0% {background-color: lighten(@brand-primary, 50%);}
+    50% {background-color: lighten(@brand-primary, 50%);}
+    100% {background-color: transparent}
+  }
+}

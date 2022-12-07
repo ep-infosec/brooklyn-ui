@@ -1,0 +1,829 @@
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+-->
+
+
+<ng-include ng-repeat="section in sections" src="section"></ng-include>
+
+
+<!-- ENTITY TYPE -->
+<script type="text/ng-template" id="blueprint-composer/component/spec-editor/section-header.html" defer-to-preexisting-id="true">
+<section class="spec-type container-fluid panel-group">
+  <div class="panel">
+    <div class="spec-type-header">
+        <h2 class="spec-title"><input class="form-control editable" ng-model="model.name" blur-on-enter
+            placeholder="{{model.id ? model.id :(model.miscData.get('typeName') || 'Unnamed ' + (!model.hasParent() ? 'application' : model.family.displayName))}}"/></h2>
+
+        <div class="btn-group pull-right spec-actions" ng-if="model.hasType()" uib-dropdown>
+            <button id="spec-actions" type="button" class="btn btn-link" uib-dropdown-toggle>
+                <span class="fa fa-bars"></span>
+            </button>
+            <ul class="dropdown-menu" uib-dropdown-menu role="menu" aria-labelledby="spec-actions">
+                <li role="menuitem"><a ng-href="/brooklyn-ui-catalog/#!/bundles/{{model.miscData.get('bundle').symbolicName}}/{{model.miscData.get('bundle').version}}/types/{{model.type}}/{{model.version || 'latest'}}" target="_blank">Open in Catalog</a></li>
+                <li role="separator" class="divider"></li>
+                <li role="menuitem"><a href ng-click="removeModel()"><span class="text-danger">Delete</span></a></li>
+            </ul>
+        </div>
+    </div>
+
+    <p ng-if="!model.hasParent()"><input class="form-control editable spec-id" ng-model="model.id" placeholder="{{ model._id }} (reference ID not set)" blur-on-enter /></p>
+
+    <div class="media" ng-if="model.hasParent()">
+        <div class="media-left">
+            <img ng-src="{{model.icon}}" alt="{{model | entityName}} logo" class="media-object" />
+        </div>
+        <div class="media-body panel-header-body">
+            <div title="{{ model.miscData.get('typeName') }}">
+                <i class="fa fa-question-circle type-description"
+                   ng-class="{ 'active': specEditor.descriptionVisible }"
+                   title="{{ specEditor.descriptionVisible ? 'Hide description' : 'Show description' }}"
+                   ng-if="modelDescription.isPresent"
+                   ng-click="specEditor.descriptionVisible = !specEditor.descriptionVisible">
+                </i>
+                <i class="fa fa-bookmark panel-header-icon"></i><samp class="entity-type-header">{{model.type}}</samp>
+                <div ng-if="state.availableVersions.length > 0" class="version-selection">
+                    <i class="fa fa-code-fork panel-header-icon"></i>
+                    <div class="btn-group" uib-dropdown dropdown-append-to-body>
+                        <button type="button" class="btn btn-primary fixed">{{state.selectedVersion || '('+specEditor.loadedVersion()+')'}}</button>
+                        <button type="button" class="btn btn-primary" uib-dropdown-toggle>
+                            <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu versions" uib-dropdown-menu role="menu" aria-labelledby="btn-append-to-body">
+                            <li role="separator" class="divider no-margin"></li>
+                            <li role="menuitem">
+                                <a href="#" ng-click="$event.preventDefault();specEditor.setEntityVersion(null)">
+                                    Use default version
+                                </a>
+                            </li>
+                            <li ng-repeat="version in state.availableVersions" role="menuitem">
+                                <a href="#" ng-click="$event.preventDefault();specEditor.setEntityVersion(version)">
+                                    {{version}}
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div ng-if="['POLICY', 'ENRICHER'].indexOf(model.family.id) === -1" class="identifier">
+                <i class="fa fa-id-card-o panel-header-icon"></i>
+                <input class="form-control editable" ng-model="model.id" placeholder="{{ model._id }} (reference ID not set)" blur-on-enter />
+            </div>
+            <md-if-oneline ng-show="specEditor.descriptionVisible && modelDescription.isNonMultiline" data="modelDescription"></md-if-oneline>
+        </div>
+    </div>
+  </div>
+</section>
+
+<br-collapsible state="true" ng-show="specEditor.descriptionVisible && modelDescription.isMultiline">
+    <heading>Description</heading>
+
+    <div style="margin-left: 3px;">
+        <md-if-multiline ng-show="specEditor.descriptionVisible" data="modelDescription"></md-if-multiline>
+    </div>
+</br-collapsible>
+</script>
+
+<!-- ENTITY PARAMETERS -->
+<script type="text/ng-template" id="blueprint-composer/component/spec-editor/section-parameters.html" defer-to-preexisting-id="true">
+<br-collapsible state="state.parameters.open" ng-if="!model.parent">  <!-- the ng-if is needed to make state update?! -->
+    <heading>
+        Parameters
+        <span ng-if="getIssuesByGroup('parameters').length> 0" class="badge" ng-class="getBadgeClass(getIssuesByGroup('parameters'))">{{getIssuesByGroup('parameters').length}}</span>
+        <span class="pull-right" ng-show="$parent.stateWrapped.state">
+            <span class="spec-toolbar-action" ng-class="{'active': state.parameters.filter.open}"><i class="fa fa-search-plus collapsible-action" title="Search or add a parameter" ng-click="$event.stopPropagation(); $event.preventDefault(); state.parameters.filter.open = !state.parameters.filter.open" ng-class="{'text-info': state.parameters.search.length > 0}"></i></span>
+        </span>
+    </heading>
+
+    <fieldset uib-collapse="!state.parameters.filter.open" class="spec-parameter-filters">
+        <div class="form-group">
+            <input auto-focus="state.parameters.filter.open"
+                type="text"
+                autocomplete="off"
+                ng-model="state.parameters.search"
+                placeholder="Search or add a parameter"
+                class="form-control"
+                blur-on-enter
+                />
+        </div>
+    </fieldset>
+
+    <div class="spec-configuration parameters">
+
+        <div class="spec-empty-state" ng-if="filteredParams.length === 0">
+            <div ng-if="parameters.length === 0">
+                <h4>No parameters</h4>
+                <p class="buttons">
+                    <button class="btn btn-sm btn-success" ng-click="specEditor.addParameter(state.parameters.search)" ng-if="state.parameters.search">
+                        <i class="fa fa-plus"></i> Add '{{state.parameters.search}}'
+                    </button>
+                </p>
+                <p ng-if="!state.parameters.search">
+                    Search for a parameter to add one
+                </p>
+            </div>
+            <div ng-if="parameters.length > 0">
+                <h4>No matching parameters</h4>
+                <p class="buttons">
+                    <button class="btn btn-sm btn-default" ng-if="state.parameters.search.length > 0" ng-click="state.parameters.search = ''">Clear search</button>
+                    <button class="btn btn-sm btn-success" ng-click="specEditor.addParameter(state.parameters.search)" ng-if="state.parameters.search">
+                        <i class="fa fa-plus"></i> Add '{{state.parameters.search}}'
+                    </button>
+                </p>
+            </div>
+        </div>
+
+        <form name="formSpecParameter" novalidate class="lightweight">
+            <div ng-repeat="item in (filteredParams = (model.parameters | filter:{name:state.parameters.search})) track by item.name">
+                <div class="form-group"
+                     ng-switch="specEditor.getParameterWidgetMode(item)"
+                     tabindex="1"
+                     auto-focus="specEditor.isInFocus('parameters', item.name)"
+                     auto-focus-listen-to-window="true"
+                     auto-focus-not-if-within="true"
+                     ng-focus="specEditor.recordParameterFocus(item)"
+                     on-enter="specEditor.advanceControlInFormGroup">
+
+                    <div class="config-flex-row">
+                        <label class="control-label" for="{{item.name}}">
+                            <span class="label-spec-configuration">{{item.label || item.name}}</span>
+                            <span class="info-spec-configuration">
+                                <i class="fa fa-fw fa-info-circle" popover-trigger="'mouseenter'"
+                                   popover-title="{{item.label || item.name}}"
+                                   uib-popover-template="'blueprint-composer/component/spec-editor/parameter-info.html'"
+                                   popover-class="spec-editor-popover" popover-placement="top-left" popover-append-to-body="true"></i>
+                            </span>
+                        </label>
+
+                        <span class="label-rhs-buttons">
+                            <span class="spacer"> </span>
+                            <span class="json-config" ng-class="{'code-mode-active': state.parameters.codeModeActive[item.name]}">
+                                <i class="fa fa-fw fa-code" ng-click="parameterCodeModeClick(item)" aria-hidden="true"
+                                   title="{{state.parameters.codeModeActive[item.name] ? 'Set' : 'Edit'}} value as a JSON-encoded object [{{item.name}}]"></i>
+                                <span class="sr-only">Edit value as a JSON-encoded object [{{item.name}}]</span>
+                            </span>
+                            <span class="remove-spec-configuration" ng-if="specEditor.getParameter(item.name) !== undefined">
+                                <i class="fa fa-fw fa-trash" ng-click="specEditor.removeParameter(item.name)" aria-hidden="true" title="Remove parameter {{item.name}}"></i>
+                                <span class="sr-only">Remove parameter {{item.name}}</span>
+                            </span>
+                        </span>
+
+                        <div class="control-value" ng-class="{ 'code-mode-active': state.parameters.codeModeActive[item.name] }">
+                          <div class="input-group hide-when-collapsed" ng-if="state.parameters.codeModeActive[item.name]">
+                            <span class="main-control span-for-rounded-edge">
+                                <textarea ng-model="state.parameters.edit.json" class="form-control rounded-edge" name="{{item.name}}" id="json-{{item.name}}"
+                                          auto-grow
+                                          placeholder="(required)"
+                                          ng-focus="specEditor.recordParameterFocus(item)"
+                                          on-enter="specEditor.advanceOutToFormGroupInPanel"></textarea>
+                            </span>
+                          </div>
+
+                          <div class="param-fields input-group hide-when-collapsed" ng-if="!state.parameters.codeModeActive[item.name]">
+                            <div class="param-field"> <span class="param-field-label">Key
+                                    <i class="fa fa-fw fa-info-circle" popover-trigger="'mouseenter'"
+                                           uib-popover="The internal name of this parameter and of the config key it becomes on deployment."
+                                           x-popover-class="spec-editor-popover"
+                                           popover-placement="top-left" popover-append-to-body="true"></i>
+                                </span>
+                                <span class="param-field-value">
+                                    <textarea ng-model="state.parameters.edit.newName" class="form-control rounded-edge" id="name-{{item.name}}"
+                                          auto-grow
+                                          placeholder="(required)"
+                                          ng-focus="specEditor.recordParameterFocus(item)"
+                                          ng-model-options="{updateOn : 'change blur'}"
+                                          on-enter="specEditor.advanceOutToFormGroupInPanel">
+                                    </textarea>
+                                </span>
+                            </div>
+                            <div class="param-field"> <span class="param-field-label">Type
+                                    <i class="fa fa-fw fa-info-circle" popover-trigger="'mouseenter'"
+                                           uib-popover="The type of the value this key takes, such as 'integer' or 'double' for numbers or 'string' for freeform text."
+                                           x-popover-class="spec-editor-popover"
+                                           popover-placement="top-left" popover-append-to-body="true"></i>
+                                </span>
+                                <span class="param-field-value">
+                                    <textarea ng-model="filteredParams[$index].type" class="form-control rounded-edge" id="type-{{item.name}}"
+                                          auto-grow
+                                          placeholder="(required)"
+                                          uib-typeahead="t for t in specEditor.paramTypes | filter:$viewValue"
+                                          typeahead-min-length="0"
+                                          ng-focus="specEditor.recordParameterFocus(item)"
+                                          on-enter="specEditor.advanceOutToFormGroupInPanel">
+                                    </textarea>
+                                </span>
+                            </div>
+                            <div class="param-field"> <span class="param-field-label">Default value
+                                    <i class="fa fa-fw fa-info-circle" popover-trigger="'mouseenter'"
+                                           uib-popover="Optionally a value can be given here to use for this parameter if one is not supplied by the user. An empty string supplied here will cause the default to be removed. (Empty strings can be set explicitly in the underlying YAML code if required.)"
+                                           x-popover-class="spec-editor-popover"
+                                           popover-placement="top-left" popover-append-to-body="true"></i>
+                                </span>
+                                <span class="param-field-value">
+                                    <textarea ng-model="filteredParams[$index].default" class="form-control rounded-edge" id="default-{{item.name}}"
+                                          auto-grow
+                                          placeholder="{{ state.parameters.edit.original.default == '' ? '(empty)' : '(not set)' }}"
+                                          ng-focus="specEditor.recordParameterFocus(item)"
+                                          on-enter="specEditor.advanceOutToFormGroupInPanel">
+                                    </textarea>
+                                </span>
+                            </div>
+                            <div class="param-field"> <span class="param-field-label">Display name
+                                    <i class="fa fa-fw fa-info-circle" popover-trigger="'mouseenter'"
+                                           uib-popover="Optional label displayed in places to be more user-friendly than the parameter/key name. This can have spaces whereas the name should not."
+                                           x-popover-class="spec-editor-popover"
+                                           popover-placement="top-left" popover-append-to-body="true"></i>
+                                </span>
+                                <span class="param-field-value">
+                                    <textarea ng-model="filteredParams[$index].label" class="form-control rounded-edge" id="label-{{item.name}}"
+                                          auto-grow
+                                          placeholder="(not set)"
+                                          ng-focus="specEditor.recordParameterFocus(item)"
+                                          on-enter="specEditor.advanceOutToFormGroupInPanel">
+                                    </textarea>
+                                </span>
+                            </div>
+                            <div class="param-field"> <span class="param-field-label">Description
+                                    <i class="fa fa-fw fa-info-circle" popover-trigger="'mouseenter'"
+                                           uib-popover="Optional information on what this parameter is for, displayed to the user in the UI"
+                                           x-popover-class="spec-editor-popover"
+                                           popover-placement="top-left" popover-append-to-body="true"></i>
+                                </span>
+                                <span class="param-field-value">
+                                    <textarea ng-model="filteredParams[$index].description" class="form-control rounded-edge" id="description-{{item.name}}"
+                                          auto-grow
+                                          placeholder="(not set)"
+                                          ng-focus="specEditor.recordParameterFocus(item)"
+                                          on-enter="specEditor.advanceOutToFormGroupInPanel">
+                                    </textarea>
+                                </span>
+                            </div>
+                            <div class="param-field"> <span class="param-field-label">Pinned
+                                <i class="fa fa-fw fa-info-circle" popover-trigger="'mouseenter'"
+                                   uib-popover="Optional flag that this parameter should be pinned as a suggested parameter in the UI"
+                                   x-popover-class="spec-editor-popover"
+                                   popover-placement="top-left" popover-append-to-body="true"></i>
+                              </span>
+                              <span class="param-field-value">
+                                <input type="checkbox" ng-model="filteredParams[$index].pinned" class="form-control rounded-edge" id="pinned-{{item.name}}"
+                                          ng-focus="specEditor.recordParameterFocus(item)"
+                                          on-enter="specEditor.advanceOutToFormGroupInPanel">
+                                </input>
+                              </span>
+                            </div>
+                            <div class="param-field"> <span class="param-field-label">Constraints
+                                    <i class="fa fa-fw fa-info-circle" popover-trigger="'mouseenter'"
+                                           uib-popover="Constraints such as &quot;required&quot; or &quot;forbiddenUnless(otherKey)&quot;, expressed as a JSON list (wrapped in square brackets and double quotes)"
+                                           x-popover-class="spec-editor-popover"
+                                           popover-placement="top-left" popover-append-to-body="true"></i>
+                                </span>
+                                <span class="param-field-value">
+                                    <textarea ng-model="state.parameters.edit.constraints" class="form-control rounded-edge code" id="constraints-{{item.name}}"
+                                          auto-grow
+                                          placeholder="(none)"
+                                          ng-focus="specEditor.recordParameterFocus(item)"
+                                          on-enter="specEditor.advanceOutToFormGroupInPanel">
+                                    </textarea>
+                                </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="has-error param-error-footer">
+                            <small ng-if="state.parameters.edit.item === item" ng-repeat="issue in state.parameters.edit.errors" class="help-block issue" ng-bind-html="issue.message"></small>
+                            <small ng-repeat="issue in model.issues | filter:{ref: item.name}:true | filter:{group: 'parameter'}:true" class="help-block issue" ng-bind-html="issue.message"></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <div class="spec-add-button" ng-if="filteredParams.length > 0 && state.parameters.search && !specEditor.getParameter(state.parameters.search)">
+                <p class="buttons">
+                    <button class="btn btn-sm btn-success" ng-click="specEditor.addParameter(state.parameters.search)">
+                        <i class="fa fa-plus"></i> Add '{{state.parameters.search}}'
+                    </button>
+                </p>
+        </div>
+
+    </div>
+</br-collapsible>
+</script>
+
+<!-- ENTITY CONFIGURATION -->
+<script type="text/ng-template" id="blueprint-composer/component/spec-editor/section-entity-config.html" defer-to-preexisting-id="true">
+<br-collapsible ng-if="true" state="state.config.open">  <!-- the ng-if is needed to make state update?! -->
+    <heading>
+        Configuration
+        <span ng-if="getIssuesByGroup('config').length> 0" class="badge" ng-class="getBadgeClass(getIssuesByGroup('config'))">{{getIssuesByGroup('config').length}}</span>
+        <span class="pull-right" ng-show="$parent.stateWrapped.state">
+            <span class="spec-toolbar-action" ng-class="{'active': state.config.filter.open}"><i class="fa fa-search-plus collapsible-action" title="Filter configuration" ng-click="$event.stopPropagation(); $event.preventDefault(); state.config.filter.open = !state.config.filter.open" ng-class="{'text-info': state.config.search.length > 0}"></i></span>
+        </span>
+    </heading>
+
+    <fieldset uib-collapse="!state.config.filter.open" class="spec-configuration-filters">
+        <div class="form-group">
+            <input ng-model="state.config.search" type="text" class="form-control" placeholder="Search for config key by name" auto-focus="state.config.filter.open" blur-on-enter />
+        </div>
+        <div class="form-group">
+            <div class="spec-configuration-filters-categories">
+                <div ng-repeat="filter in filters.config track by filter.id"
+                    ng-class="{ 'disabled': isFilterDisabled(filter) }"
+                    ng-click="onFilterClicked(filter)"
+                    class="filter">
+                    
+                    <span title="{{ filter.hoverText }}" class="label" ng-class="{'label-primary': state.config.filter.values[ filter.id ], 'label-default': !state.config.filter.values[ filter.id ] }">
+                        <i class="filter-icon fa fa-{{ filter.icon }}" ng-if="filter.icon"></i>
+                        <span class="filter-label" ng-if="filter.label">{{ filter.label }}</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </fieldset>
+
+    <div class="spec-configuration config">
+        <div class="spec-empty-state" ng-if="filteredItems.length === 0">
+          <div ng-if="model.miscData.get('config').length === 0">
+            <h4>No configuration</h4>
+            <p class="buttons">
+                <button class="btn btn-sm btn-success" ng-click="specEditor.addConfigKey(state.config.search)" ng-if="state.config.search && state.config.search!=''">
+                        <i class="fa fa-plus"></i> Add '{{state.config.search}}'
+                </button>
+            </p>
+          </div>
+          <div ng-if="model.miscData.get('config').length > 0">
+            <h4>No matching configuration</h4>
+            <p class="buttons">
+                <button class="btn btn-sm btn-default" ng-if="state.config.search.length > 0" ng-click="state.config.search = ''">Clear search</button>
+                <button class="btn btn-sm btn-default" ng-click="specEditor.addConfigKey(state.config.search)" ng-if="state.config.search && state.config.search!='' && !specEditor.getConfig(state.config.search)">
+                        <i class="fa fa-plus"></i> Add '{{state.config.search}}'
+                </button>
+                <button class="btn btn-sm btn-success" ng-if="!state.config.filter.values.all" ng-click="state.config.filter.values.all = true">
+                    <i class="fa fa-filter"></i> Clear filters
+                </button>
+            </p>
+          </div>
+        </div>
+
+        <form name="formSpecConfig" novalidate class="lightweight">
+            <div ng-repeat="item in (filteredItems = (model.miscData.get('config') | specEditorConfig:state.config.filter.values:model | filter:{name:state.config.search} | orderBy:+priority)) track by item.name ">
+                <div class="form-group" ng-class="{'has-error': ((model.issues | filter:{ref: item.name}:true | filter:{group: 'config'}:true).length > 0) || (specEditor.customConfigWidgetError(item)), 'used': config[item.name] !== undefined}" 
+                        ng-switch="getConfigWidgetMode(item)" 
+                        tabindex="1"
+                        auto-focus="specEditor.isInFocus('config', item.name)"
+                        auto-focus-listen-to-window="true"
+                        auto-focus-not-if-within="true"
+                        ng-focus="specEditor.recordConfigFocus(item)"
+                        on-enter="specEditor.advanceControlInFormGroup">
+                  <div ng-if="specEditor.getCustomConfigWidgetMode(item) === 'enabled'" class="custom-config-widget">
+                    <ng-include src="specEditor.getCustomConfigWidgetTemplate(item)" class="custom-config-widget"/>
+                  </div>
+                  
+                  <!-- have to hide it; excluding it conditionally via if doesn't play nice with switch -->
+                  <div ng-show="specEditor.getCustomConfigWidgetMode(item) !== 'enabled'" class="config-flex-row">
+                    <label class="control-label" for="{{item.name}}">
+                        <span class="label-spec-configuration">{{item.label || item.name}}</span>
+                        <span class="info-spec-configuration">
+                           <i class="fa fa-fw fa-info-circle" popover-trigger="'mouseenter'"
+                               popover-title="{{item.label || item.name}}"
+                               uib-popover-template="'blueprint-composer/component/spec-editor/config-info.html'"
+                               popover-class="spec-editor-popover" popover-placement="top-left" popover-append-to-body="true"></i>
+                        </span>
+                    </label>
+                    
+                    <span class="label-rhs-buttons" ng-if="!specEditor.isHiddenSensitiveField(item)">
+                        <span class="spacer"> </span>
+                        <span class="custom-widget-enable-button" ng-if="specEditor.getCustomConfigWidgetMode(item) !== null">
+                            <i class="fa fa-fw fa-sun-o" ng-click="specEditor.toggleCustomConfigWidgetMode(item)" aria-hidden="true" title="{{specEditor.getCustomConfigWidgetModeTitle(item)}} [{{item.name}}]"></i>
+                            <span class="sr-only">{{specEditor.getCustomConfigWidgetModeTitle(item)}} [{{item.name}}]</span>
+                        </span>
+                        <span class="json-config" ng-class="{'code-mode-active': state.config.codeModeActive[item.name], 'code-mode-forced': state.config.codeModeForced[item.name]}" ng-if="isCodeModeAvailable(item)">
+                            <i class="fa fa-fw fa-code" ng-click="codeModeClick(item)" aria-hidden="true" title="{{getJsonModeTitle(item.name)}} [{{item.name}}]"></i>
+                            <span class="sr-only">{{getJsonModeTitle(item.name)}} [{{item.name}}]</span>
+                        </span>
+                        <span ng-if="specEditor.isDsl(item.name)" class="rhs-buttons-subspan">
+                            <span class="dsl-open-wizard-from-toolbar" ng-if="!state.config.dslViewerManualOverride[item.name]">
+                                <i class="fa fa-fw fa-bolt" ui-sref="main.graphical.edit.dsl({entityId: model._id, for: item.name})" aria-hidden="true" title="Open in DSL editor [{{item.name}}]"></i>
+                                <span class="sr-only">Open in DSL editor [{{item.name}}]</span>
+                            </span>
+                            <span class="dsl-manual-override-editor" ng-class="{ 'dsl-viewer-manual-override': state.config.dslViewerManualOverride[item.name] }">
+                                <i class="fa fa-fw fa-pencil" ng-click="state.config.dslViewerManualOverride[item.name] = !state.config.dslViewerManualOverride[item.name]" aria-hidden="true" title="Edit DSL code [{{item.name}}]"></i>
+                                <span class="sr-only">Edit DSL code [{{item.name}}]</span>
+                            </span>
+                        </span>
+                        <span class="remove-spec-configuration" ng-if="config[item.name] !== undefined">
+                            <i class="fa fa-fw fa-eraser" ng-click="model.removeConfig(item.name)" aria-hidden="true" title="Clear configuration [{{item.name}}]"></i>
+                            <span class="sr-only">Clear configuration [{{item.name}}]</span>
+                        </span>
+                        <span class="sensitive-field-visible" ng-if="specEditor.isSensitiveField(item) && !specEditor.isHiddenSensitiveField(item)">
+                            <i class="fa fa-fw fa-eye" ng-click="specEditor.setSensitiveFieldUnmasked(item, false)" aria-hidden="true" title="Hide sensitive field value [{{item.name}}]"></i>
+                            <span class="sr-only">Hide sensitive field value [{{item.name}}]</span>
+                        </span>
+                    </span>
+
+                    <span class="label-rhs-buttons-sensitive-hidden" ng-if="specEditor.isHiddenSensitiveField(item)">
+                        <span class="spacer"> </span>
+                        <span class="sensitive-field-hidden">
+                            <i class="fa fa-fw fa-eye-slash sensitive-field-hidden-icon" ng-click="specEditor.setSensitiveFieldUnmasked(item, true)" aria-hidden="true" title="Reveal masked sensitive field value [{{item.name}}]"></i>
+                            <span class="sr-only">Reveal masked sensitive field value [{{item.name}}]</span>
+                        </span>
+                    </span>
+
+                    <div class="control-value" ng-class="{ 'inline-control': item.widgetMode==='boolean', 'unset': !defined(config[item.name]), 'has-default': defined(item.defaultValue) && item.defaultValue!=null, 'code-mode-active': state.config.codeModeActive[item.name], 'hide-masked-sensitive-value': specEditor.isHiddenSensitiveField(item) }">
+                        <div ng-switch-when="boolean" class="boolean">
+                            <div class="btn-group btn-block" role="group">
+                                <button type="button" class="btn btn-xs btn-default" ng-class="{'btn-success active': config[item.name] === false, 'active': config[item.name] === undefined && item.defaultValue === false}" ng-click="config[item.name] = false" ng-focus="specEditor.recordConfigFocus(item)">false</button>
+                                <button type="button" class="btn btn-xs btn-default" ng-class="{'btn-success active': config[item.name] === true, 'active': config[item.name] === undefined && item.defaultValue === true}" ng-click="config[item.name] = true" ng-focus="specEditor.recordConfigFocus(item)">true</button>
+                                <span class="input-group-btn dsl-wizard-button" ng-if="specEditor.isDslWizardButtonAllowed(item.name)">
+                                    <a ui-sref="main.graphical.edit.dsl({entityId: model._id, for: item.name})" class="btn btn-xs btn-default" ng-class="{'btn-success active': config[item.name].length > 0}" title="Open in DSL editor" ng-focus="specEditor.recordConfigFocus(item)"><i class="fa fa-bolt"></i></a>
+                                </span>
+                            </div>
+                        </div>
+
+                        <span class="main-control span-for-rounded-edge">
+                            <select ng-switch-when="java.lang.Enum"
+                                ng-model="config[item.name]"
+                                ng-options="s.value as (s.description + (item.defaultValue === s.value ? ' --- default' : '')) for s in item.possibleValues"
+                                ng-focus="specEditor.recordConfigFocus(item)"
+                                class="form-control rounded-edge"
+                                name="{{item.name}}"
+                                id="{{item.name}}"></select>
+                        </span>
+
+                        <div ng-switch-when="map" 
+                                ng-init="expandMode = 'default'" class="collection"
+                                ng-class="{ 'open-when-unfocused': expandMode=='open' }">
+                            <p class="collection-toggle" ng-click="expandMode = cycleExpandMode(expandMode, 'map', item, state)" ng-focus="specEditor.recordConfigFocus(item)"
+                                    ng-class="{ 'has-default': item.defaultValue && getObjectSize(item.defaultValue) }">
+                                <i class="fa collection-caret" ng-class="{'fa-caret-square-o-down': expandMode=='closed', 'fa-caret-square-o-up': expandMode=='open', 'caret-default': expandMode=='default' }" aria-hidden="true" title="{{expandMode=='closed' ? 'Unpin' : expandMode=='open' ? 'Close (pin)' : 'Open (pin)'}} map"></i>
+                                <span class="sr-only">{{expandMode=='closed' ? 'Unpin' : expandMode=='open' ? 'Close (pin)' : 'Open (pin)'}} map</span>
+                                <ng-pluralize count="getObjectSize(config[item.name])"
+                                              when="{'0': 'No entries',
+                                            'one': '{} entry',
+                                            'other': '{} entries'}"></ng-pluralize>
+                                <span ng-if="!defined(config[item.name]) && getObjectSize(item.defaultValue)">
+                                    (default <ng-pluralize count="getObjectSize(item.defaultValue)"
+                                              when="{'0': 'no entries',
+                                        'one': '{} entry',
+                                        'other': '{} entries'}"></ng-pluralize>)
+                                </span>
+                            </p>
+                            <ul class="collection-map" 
+                                    ng-class="{'default-collapse': expandMode=='default', 'collapse': expandMode=='closed'}">
+                                <li ng-repeat="(mapKey, mapValue) in config[item.name] track by mapKey" class="collection-item">
+                                    <span class="collection-item-shrink collection-map-key">
+                                        <i ng-click="onDeleteMapProperty(config[item.name], mapKey)" class="fa fa-fw fa-times remove-spec-configuration" aria-hidden="true" title="Remove property [{{mapKey}}]"></i>
+                                        <span class="sr-only">Remove property [{{mapKey}}]</span>
+                                        {{mapKey}}
+                                    </span>
+                                    <div class="collection-item-grow">
+                                        <span class="input-group">
+                                            <span class="main-control span-for-rounded-edge">
+                                                <input type="text" ng-model="config[item.name][mapKey]" class="form-control rounded-edge" placeholder="(empty)" 
+                                                    ng-focus="specEditor.recordConfigFocus(item)"
+                                                    on-enter="specEditor.advanceControlInFormGroup" />
+                                            </span>
+                                            <span class="input-group-btn dsl-wizard-button rounded-edge" ng-if="specEditor.isDslWizardButtonAllowed(item.name, mapKey)">
+                                                <a ui-sref="main.graphical.edit.dsl({entityId: model._id, for: item.name, index: mapKey})" class="btn btn-default" title="Open in DSL editor"><i class="fa fa-bolt"></i></a>
+                                            </span>
+                                        </span>
+                                    </div>
+                                </li>
+                                <li class="collection-item collection-add input-group" ng-class="{'nonempty': nonempty(config[item.name])}">
+                                    <span class="main-control span-for-rounded-edge">
+                                      <input ng-model="newKey" type="text" placeholder="Add property key" class="form-control rounded-edge" 
+                                        ng-focus="specEditor.recordConfigFocus(item)"
+                                        on-enter="specEditor.advanceOutToFormGroupInPanel" ng-blur="onAddMapProperty(item.name, newKey, $event); newKey = '';" required />
+                                    </span>
+                                    <span class="input-group-btn dsl-wizard-button rounded-edge" ng-if="specEditor.isDslWizardButtonAllowed(item.name, null, newKey)">
+                                        <a ui-sref="main.graphical.edit.dsl({entityId: model._id, for: item.name})" class="btn btn-default" title="Open in DSL editor"><i class="fa fa-bolt"></i></a>
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div ng-switch-when="array" ng-switch-when-separator="|" 
+                                ng-init="expandMode = 'default'" class="collection"
+                                ng-class="{ 'open-when-unfocused': expandMode=='open' }">
+                            <p class="collection-toggle" ng-click="expandMode = cycleExpandMode(expandMode, 'map', item, state)" ng-focus="specEditor.recordConfigFocus(item)"
+                                    ng-class="{ 'has-default': item.defaultValue && item.defaultValue.length }">
+                                <i class="fa collection-caret" ng-class="{'fa-caret-square-o-down': expandMode=='closed', 'fa-caret-square-o-up': expandMode=='open', 'caret-default': expandMode=='default' }" aria-hidden="true" title="{{expandMode=='closed' ? 'Unpin' : expandMode=='open' ? 'Close (pin)' : 'Open (pin)'}} list"></i>
+                                <span class="sr-only">{{expandMode=='closed' ? 'Unpin' : expandMode=='open' ? 'Close (pin)' : 'Open (pin)'}} list</span>
+                                <ng-pluralize count="config[item.name] ? config[item.name].length : 0"
+                                              when="{'0': 'No entries',
+                                        'one': '{} entry',
+                                        'other': '{} entries'}"></ng-pluralize>
+                                <span ng-if="!defined(config[item.name]) && item.defaultValue && item.defaultValue.length">
+                                    (default <ng-pluralize count="item.defaultValue.length"
+                                              when="{'0': 'no entries',
+                                        'one': '{} entry',
+                                        'other': '{} entries'}"></ng-pluralize>)
+                                </span>
+                            </p>
+                            <ul class="collection-list"
+                                    ng-class="{'default-collapse': expandMode=='default', 'collapse': expandMode=='closed'}">
+                                <li ng-repeat="value in config[item.name] track by $index" class="collection-item">
+                                    <span class="collection-item-shrink">
+                                        <i ng-click="onDeleteListItem(config[item.name], $index)" class="fa fa-fw fa-times remove-spec-configuration" aria-hidden="true" title="Remove item [{{value}}]"></i>
+                                        <span class="sr-only">Remove item [{{value}}]</span>
+                                    </span>
+                                    <div class="collection-item-grow">
+                                        <span class="input-group">
+                                            <span class="main-control span-for-rounded-edge">
+                                                <input type="text" ng-model="config[item.name][$index]" class="form-control rounded-edge" placeholder="(empty)" 
+                                                    ng-focus="specEditor.recordConfigFocus(item)"
+                                                    on-enter="specEditor.advanceControlInFormGroup" />
+                                            </span>
+                                            <span class="input-group-btn dsl-wizard-button rounded-edge" ng-if="specEditor.isDslWizardButtonAllowed(item.name, $index)" ng-focus="specEditor.recordConfigFocus(item)">
+                                                <a ui-sref="main.graphical.edit.dsl({entityId: model._id, for: item.name, index: $index})" class="btn btn-default" title="Open in DSL editor"><i class="fa fa-bolt"></i></a>
+                                            </span>
+                                        </span>
+                                    </div>
+                                </li>
+                                <li class="collection-item collection-add input-group" ng-class="{'nonempty': config[item.name].length>0}">
+                                    <span class="input-group">
+                                        <span class="main-control span-for-rounded-edge">
+                                          <input ng-model="newItem" type="text" placeholder="Add item" class="form-control rounded-edge" auto-focus="expandMode != 'closed'" 
+                                            ng-focus="specEditor.recordConfigFocus(item)"
+                                            on-enter="specEditor.advanceOutToFormGroupInPanel" ng-blur="onAddListItem(item.name, newItem, $event, $element); newItem = '';" required />
+                                        </span>
+                                        <span class="input-group-btn dsl-wizard-button rounded-edge" ng-if="specEditor.isDslWizardButtonAllowed(item.name, -1, newItem)">
+                                            <a ui-sref="main.graphical.edit.dsl({entityId: model._id, for: item.name, index: config[item.name].length})" class="btn btn-default" title="Open in DSL editor"><i class="fa fa-bolt"></i></a>
+                                        </span>
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div ng-switch-when="org.apache.brooklyn.api.entity.EntitySpec" ng-init="adjunct = config[item.name][REPLACED_DSL_ENTITYSPEC]">
+                            <div class="config-entity-spec spec-adjunct" ng-if="config[item.name][REPLACED_DSL_ENTITYSPEC]">
+                                <a ui-sref="main.graphical.edit.spec({entityId: model._id, specId: adjunct._id})"
+                                            class="open-entity-spec"
+                                            title="Open in spec editor"
+                                            ng-focus="specEditor.recordConfigFocus(item)"></a>
+                                <ng-include src="'blueprint-composer/component/spec-editor/adjunct.html'"></ng-include>
+                            </div>
+                            <a ng-if="!config[item.name][REPLACED_DSL_ENTITYSPEC]" ui-sref="main.graphical.edit.add({entityId: model._id, family: 'spec', configKey: item.name})" class="no-spec">
+                                (no spec set)
+                            </a>
+                        </div>
+
+                        <div class="input-group" ng-switch-default>
+                            <span class="main-control span-for-rounded-edge">
+                                <textarea ng-model="config[item.name]" class="form-control rounded-edge" name="{{item.name}}" id="{{item.name}}" auto-grow
+                                      placeholder="{{defined(config[item.name]) ? null : item.defaultValue === '' || item.defaultValue === null ? '(empty)' : item.defaultValue}}"
+                                      ng-focus="specEditor.recordConfigFocus(item)" on-enter="specEditor.advanceOutToFormGroupInPanel"></textarea>
+                            </span>
+                            <span class="input-group-btn dsl-wizard-button rounded-edge" ng-if="specEditor.isDslWizardButtonAllowed(item.name)">
+                                <a ui-sref="main.graphical.edit.dsl({entityId: model._id, for: item.name})" class="btn btn-default" title="Open in DSL editor"><i class="fa fa-bolt"></i></a>
+                            </span>
+                        </div>
+
+                        <dsl-viewer dsl="model.config.get(item.name)" ng-switch-when="dsl-viewer"></dsl-viewer>
+                        
+                    </div>
+                    
+                    <small ng-repeat="issue in model.issuesWithFixes | filter:{ref: item.name}:true | filter:{group: 'config'}:true" class="help-block issue">
+                        <span ng-bind-html="issue.message"></span>
+                        <div ng-if="getObjectSize(issue.quickFixes)" class="quick-fix">
+                            <div ng-repeat="fix in issue.quickFixes">
+                                <a ng-click="applyQuickFix(issue, fix)" class="btn btn-xs btn-primary" ng-attr-title="{{ fix.tooltip }}">{{ fix.text }}</a>
+                            </div>
+                        </div>
+                    </small>
+                    <small ng-if="specEditor.customConfigWidgetError(item)" class="help-block issue">
+                            Custom widget unavailable:
+                            {{ specEditor.customConfigWidgetError(item) }}
+                    </small>
+                  </div>
+
+                </div>
+            </div>
+        </form>
+        
+        <div class="config-add-button" ng-if="filteredItems.length > 0 && state.config.search && !specEditor.getConfig(state.config.search)">
+                <p class="buttons">
+                    <button class="btn btn-sm btn-success" ng-click="specEditor.addConfigKey(state.config.search)">
+                        <i class="fa fa-plus"></i> Add '{{state.config.search}}'
+                    </button>
+                </p>
+        </div>
+        
+    </div>
+</br-collapsible>
+</script>
+
+<!-- ENTITY LOCATION -->
+<script type="text/ng-template" id="blueprint-composer/component/spec-editor/section-locations.html" defer-to-preexisting-id="true">
+  <br-collapsible ng-if="[FAMILIES.ENTITY, FAMILIES.SPEC].indexOf(model.family) > -1" state="state.location.open">
+    <heading>
+        Location
+        <span ng-if="(model.issues | filter:{group:'location'}).length> 0" class="badge" ng-class="getBadgeClass((model.issues | filter:{group:'location'}))">{{(model.issues | filter:{group:'location'}).length}}</span>
+    </heading>
+
+    <div class="spec-location">
+        <div ng-repeat="issue in model.issues | filter:{group:'location'}" class="alert" ng-class="{'alert-warning': issue.level.id === 'warn', 'alert-danger': issue.level.id === 'error'}" role="alert">
+            <span ng-bind-html="issue.message"></span>
+        </div>
+        <div class="spec-empty-state" ng-if="!model.hasLocation()">
+            <h4>No location attached</h4>
+            <p ng-if="!model.hasLocation() && model.hasInheritedLocation()">However, location <strong class="text-primary">{{model.getInheritedLocation()}}</strong> has been attached on an ancestor.</p>
+            <p><a ui-sref="main.graphical.edit.add({entityId: model._id, family: 'location'})" class="btn btn-sm btn-success"><i class="fa fa-plus"></i> Attach a location</a></p>
+        </div>
+        <div ng-if="model.hasLocation()">
+            <p ng-repeat="issue in state.issues | filter:{group:'location'}" class="alert alert-{{issue.severity}}">
+                <em ng-bind-html="issue.message"></em>
+            </p>
+            <p>
+                Targeted at: 
+                <strong ng-if="specEditor.isInstance(model.location, 'string')">{{ model.miscData.get('locationName') }}</strong>
+                <pre ng-if="!specEditor.isInstance(model.location, 'string')">{{ model.location | json }}</pre>
+            </p>
+            <br/>
+            <a class="btn btn-default" ui-sref="main.graphical.edit.add({entityId: model._id, family: 'location'})">Change location</a>
+            <button class="btn btn-danger btn-link" ng-click="model.clearIssues({group: 'location'}).removeLocation()">Remove</button>
+        </div>
+    </div>
+  </br-collapsible>
+</script>
+
+<!-- ENTITY POLICIES -->
+<script type="text/ng-template" id="blueprint-composer/component/spec-editor/section-policies.html" defer-to-preexisting-id="true">
+  <br-collapsible ng-if="[FAMILIES.ENTITY, FAMILIES.SPEC].indexOf(model.family) > -1" state="state.policy.open">
+    <heading>
+        Policies
+        <span ng-if="getPoliciesIssues().length> 0" class="badge" ng-class="getBadgeClass(getPoliciesIssues())">{{getPoliciesIssues().length}}</span>
+
+        <span class="pull-right" ng-show="$parent.stateWrapped.state">
+            <i class="fa fa-search collapsible-action" title="Filter policies" ng-click="$event.stopPropagation(); $event.preventDefault();" ng-class="{'text-success': state.policy.search.length > 0}" uib-popover-template="'blueprint-composer/component/spec-editor/search-policy.html'" popover-placement="bottom-right" popover-trigger="'outsideClick'"></i>
+            <a class="fa fa-plus collapsible-action" title="Add policy" ui-sref="main.graphical.edit.add({entityId: model._id, family: 'policy'})" ng-click="$event.stopPropagation()" ></a>
+        </span>
+    </heading>
+
+    <div class="spec-policies">
+        <div class="spec-empty-state" ng-if="!model.hasPolicies() || filteredPolicies.length === 0 ">
+            <h4 ng-if="!model.hasPolicies()">No policies attached</h4>
+            <h4 ng-if="model.hasPolicies() && filteredPolicies.length === 0">No policies matching the current search</h4>
+            <p>
+                <button class="btn btn-sm btn-default" ng-if="state.policy.search.length > 0" ng-click="state.policy.search = ''">Clear search</button>
+                <a ui-sref="main.graphical.edit.add({entityId: model._id, family: 'policy'})" class="btn btn-sm btn-success">
+                    <i class="fa fa-plus"></i>
+                    <span ng-if="!model.hasPolicies()">Attach a policy</span>
+                    <span ng-if="model.hasPolicies() && filteredPolicies.length === 0">Attach another policy</span>
+                </a>
+            </p>
+        </div>
+
+        <div ng-repeat="adjunct in filteredPolicies = (model.getPoliciesAsArray() | specEditorType:state.policy.search) track by adjunct._id" class="spec-policy spec-adjunct">
+            <a ui-sref="main.graphical.edit.policy({entityId: model._id, policyId: adjunct._id})"></a>
+            <ng-include src="'blueprint-composer/component/spec-editor/adjunct.html'"></ng-include>
+        </div>
+    </div>
+  </br-collapsible>
+</script>
+
+<!-- ENTITY ENRICHERS -->
+<script type="text/ng-template" id="blueprint-composer/component/spec-editor/section-enrichers.html" defer-to-preexisting-id="true">
+  <br-collapsible ng-if="[FAMILIES.ENTITY, FAMILIES.SPEC].indexOf(model.family) > -1" state="state.enricher.open">
+    <heading>
+        Enrichers
+        <span ng-if="getEnrichersIssues().length> 0" class="badge" ng-class="getBadgeClass(getEnrichersIssues())">{{getEnrichersIssues().length}}</span>
+
+        <span class="pull-right" ng-show="$parent.stateWrapped.state">
+            <i class="fa fa-search collapsible-action" title="Search enrichers" ng-click="$event.stopPropagation(); $event.preventDefault();" ng-class="{'text-success': state.enricher.search.length > 0}" uib-popover-template="'blueprint-composer/component/spec-editor/search-enricher.html'" popover-placement="bottom-right" popover-trigger="'outsideClick'"></i>
+            <a class="fa fa-plus collapsible-action" title="Add enricher" ui-sref="main.graphical.edit.add({entityId: model._id, family: 'enricher'})" ng-click="$event.stopPropagation()" ></a>
+        </span>
+    </heading>
+
+    <div class="spec-enrichers">
+        <div class="spec-empty-state" ng-if="!model.hasEnrichers() || filteredEnrichers.length === 0">
+            <h4 ng-if="!model.hasEnrichers()">No Enrichers attached</h4>
+            <h4 ng-if="model.hasEnrichers() && filteredEnrichers.length === 0">No enrichers matching the current search</h4>
+            <p>
+                <button class="btn btn-sm btn-default" ng-if="state.enricher.search.length > 0" ng-click="state.enricher.search = ''">Clear search</button>
+                <a ui-sref="main.graphical.edit.add({entityId: model._id, family: 'enricher'})" class="btn btn-sm btn-success">
+                    <i class="fa fa-plus"></i>
+                    <span ng-if="!model.hasEnrichers()">Attach an enricher</span>
+                    <span ng-if="model.hasEnrichers() && filteredEnrichers.length === 0">Attach another enricher</span>
+                </a>
+            </p>
+        </div>
+
+        <div ng-repeat="adjunct in filteredEnrichers = (model.getEnrichersAsArray() | specEditorType:state.enricher.search) track by adjunct._id" class="spec-enricher spec-adjunct">
+            <a ui-sref="main.graphical.edit.enricher({entityId: model._id, enricherId: adjunct._id})"></a>
+            <ng-include src="'blueprint-composer/component/spec-editor/adjunct.html'"></ng-include>
+        </div>
+    </div>
+  </br-collapsible>
+</script>
+
+<!-- OTHERS (downstream customizations) -->
+<script type="text/ng-template" id="blueprint-composer/component/spec-editor/section-others.html" defer-to-preexisting-id="true">
+    <!-- Placeholder for other sections. -->
+</script>
+
+<!-- PARAMETER INFO TEMPLATE :: START -->
+<script type="text/ng-template" id="blueprint-composer/component/spec-editor/parameter-info.html" defer-to-preexisting-id="true">
+    <div class="config-item-quick-info">
+        <div class="quick-info-metadata">
+            <p><i class="mini-icon fa fa-fw fa-cog"></i> <samp class="type-symbolic-name">{{item.name}}</samp>
+                <span class="config-type label-color column-for-type oneline label label-success">{{item.type}}</span></p>
+        </div>
+        <p class="quick-info-description">
+            <md-field raw-item="item"/>
+        </p>
+        <div class="quick-info-metadata config-default" ng-if="item.defaultValue"></i>Default value: <samp>{{item.defaultValue}}</samp></div>
+    </div>
+
+</script>
+<!-- PARAMETER INFO TEMPLATE :: START-->
+
+<!-- CONFIG INFO TEMPLATE :: START -->
+<script type="text/ng-template" id="blueprint-composer/component/spec-editor/config-info.html" defer-to-preexisting-id="true">
+    <div class="config-item-quick-info">
+        <div class="quick-info-metadata">
+            <p><i class="mini-icon fa fa-fw fa-cog"></i> <samp class="type-symbolic-name">{{item.name}}</samp>
+            <span class="config-type label-color column-for-type oneline label label-success">{{item.type}}</span></p>
+        </div>
+        <p class="quick-info-description" ng-if="item.description">
+            <md-field raw-item="item"/>
+        </p>
+        <div class="quick-info-metadata config-default" ng-if="item.defaultValue"></i>Default value: <samp>{{item.defaultValue}}</samp></div>
+        <div class="quick-info-metadata config-required" ng-if="item.constraints.required"><i>This field is required.</div>
+    </div>
+        
+</script>
+<!-- CONFIG INFO TEMPLATE :: START-->
+
+<!-- SEARCH POLICY TEMPLATE :: START -->
+<script type="text/ng-template" id="blueprint-composer/component/spec-editor/search-policy.html" defer-to-preexisting-id="true">
+    <div ng-click="$event.stopPropagation(); $event.preventDefault();">
+        <input ng-model="state.policy.search" type="text" class="form-control" placeholder="Search for a policy" auto-focus blur-on-enter />
+    </div>
+</script>
+<!--SEARCH POLICY TEMPLATE :: START-->
+
+<!-- SEARCH ENRICHER TEMPLATE :: START -->
+<script type="text/ng-template" id="blueprint-composer/component/spec-editor/search-enricher.html" defer-to-preexisting-id="true">
+    <div ng-click="$event.stopPropagation(); $event.preventDefault();">
+        <input ng-model="state.enricher.search" type="text" class="form-control" placeholder="Search for an enricher" auto-focus blur-on-enter />
+    </div>
+</script>
+<!--SEARCH ENRICHER TEMPLATE :: START-->
+
+<!--TYPEAHEAD TEMPLATE :: START-->
+<script type="text/ng-template" id="blueprint-composer/component/spec-editor/config-item.html" defer-to-preexisting-id="true">
+    <div class="dropdown-item" ng-init="item = match.model">
+        <div class="dropdown-row">
+            <span ng-bind-html="match.model.name | uibTypeaheadHighlight:query" class="config-name"></span>
+            <i class="fa fa-fw fa-asterisk" ng-if="match.model.constraints.required"></i>
+            <i class="fa fa-fw fa-eye-slash" ng-if="match.model.isHidden"></i>
+            <!-- previously showed just the label; now show just the name as that's what is inserted.
+                 ideally would show label and description as popover (reusing ConfigInfoTemplate), but due to bugs in popover 
+                 we can't easily get that to work. -->
+        </div>
+    </div>
+</script>
+<!--TYPEAHEAD TEMPLATE :: END-->
+
+<!--ADJUNCT TEMPLATE :: START-->
+<script type="text/ng-template" id="blueprint-composer/component/spec-editor/adjunct.html" defer-to-preexisting-id="true">
+    <div class="media" ng-class="{'has-issues': adjunct.hasIssues()}">
+        <div class="media-left media-middle">
+            <img ng-src="{{adjunct.icon}}" alt="{{adjunct | entityName}} logo" class="media-object" />
+        </div>
+        <div class="media-body">
+            <div>
+                {{adjunct.miscData.get('typeName')}}
+                <span ng-if="adjunct.issues.length > 0" > • <small class="text-danger">
+                    <em>
+                      <i class="fa fa-ban"></i>
+                        <ng-pluralize count="adjunct.issues.length" when="{
+                             'one': '{} issue',
+                             'other': '{} issues'}">
+                        </ng-pluralize>
+                    </em>
+                </small></span>
+            </div>
+            <i ng-if="['POLICY', 'ENRICHER'].indexOf(adjunct.family.id) > -1" class="fa fa-trash remove-spec-adjunct" ng-click="removeAdjunct($event, adjunct)" title="Remove"></i>
+            <a ng-if="adjunct.family.id === 'SPEC'" ui-sref="main.graphical.edit.add({entityId: model._id, family: 'spec', configKey: item.name})" class="update-spec-adjunct" title="Change type">
+                <i class="fa fa-exchange"></i>
+            </a>
+        </div>
+    </div>
+</script>
+<!--ADJUNCT TEMPLATE :: END-->

@@ -1,0 +1,80 @@
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+-->
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-4">
+            <br-card>
+                <br-card-content class="entity-tree">
+                    <div class="entity-tree-header">
+                        <div class="entity-tree-header-section">
+                            <h2 class="entity-tree-title">Applications</h2>
+                            <button class="btn btn-sm btn-default entity-tree-sort-action" ng-click="ctrl.toggleSortOrder($event)">
+                                <div>
+                                    <span class="glyphicon" ng-class="ctrl.sortReverse ? 'fa fa-sort-amount-desc' : 'fa fa-sort-amount-asc'"></span>
+                                </div>
+                            </button>
+                            <div class="btn-group" ng-if="ctrl.viewModes.size > 1" uib-dropdown>
+                                <button class="btn btn-sm" ng-class="ctrl.isDefaultViewMode() ? 'btn-default' : 'btn-primary'" uib-tooltip="Switch view" tooltip-append-to-body="true" uib-dropdown-toggle/>
+                                    <div>
+                                        <span class="fa fa-sitemap"></span>
+                                    </div>
+                                </button>
+                                <ul class="dropdown-menu" uib-dropdown-menu>
+                                    <li ng-repeat="viewMode in ctrl.viewModesArray()">
+                                        <a class="view-mode-item"
+                                           ng-click="ctrl.viewMode = viewMode"
+                                           ng-class="{'active': ctrl.viewMode === viewMode}">{{viewMode}}</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="entity-tree-header-section">
+                            <button class="btn btn-link entity-tree-action"
+                                ng-class="{'btn-sm': !ctrl.isNotificationsBlocked, 'btn-xs': ctrl.isNotificationsBlocked}"
+                                ng-if="ctrl.isNotificationsSupported"
+                                ng-disabled="ctrl.isNotificationsBlocked"
+                                ng-click="ctrl.toggleNotifications()">
+                                <i class="fa fa-bell notifications" ng-if="!ctrl.isNotificationsBlocked"
+                                   ng-class="{'active': ctrl.isNotificationsEnabled}"></i>
+                                <span class="fa-stack" ng-if="ctrl.isNotificationsBlocked"
+                                      uib-tooltip="Notifications are currently blocked. You can allow them in your browser settings"
+                                      tooltip-placement="left">
+                                    <i class="fa fa-bell fa-stack-1x"></i>
+                                    <i class="fa fa-ban fa-stack-2x text-danger"></i>
+                                </span>
+                            </button>
+                            <a href="{{ ctrl.composerUrl }}/" class="btn btn-sm btn-default entity-tree-action" ng-if="ctrl.composerUrl">
+                                <i class="fa fa-plus"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <entity-tree sort-reverse="ctrl.sortReverse" view-mode="ctrl.viewMode" view-modes="ctrl.viewModes"></entity-tree>
+                </br-card-content>
+            </br-card>
+
+        </div>
+
+        <div class="col-md-8">
+            <ui-view>
+                <h3 class="text-center text-muted">Select an entity on the left</h3>
+            </ui-view>
+        </div>
+    </div>
+</div>

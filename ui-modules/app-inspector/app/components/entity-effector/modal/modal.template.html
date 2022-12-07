@@ -1,0 +1,96 @@
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+-->
+<div class="modal-header">
+    <br-svg type="close" class="pull-right" ng-click="$dismiss('Close modal')"></br-svg>
+    <h3 class="modal-title" ng-unless="vm.cli">Invoke effector</h3>
+    <h3 class="modal-title" ng-if="vm.cli">CLI usage info</h3>
+</div>
+<div class="modal-body">
+    <section>
+        <span class="effector-name">{{vm.effector.name}}</span>
+        <span class="effector-description">{{vm.effector.description}}</span>
+    </section>
+    <section ng-if="!(vm.effector.parameters.length === 0)">
+        <h3>Parameters</h3>
+        <div ng-repeat="parameter in vm.effector.parameters" class="row">
+            <div class="col-md-4 parameter-name">{{parameter.name}}</div>
+            <div class="col-md-8">
+                <div class="btn-group dropdown-location" uib-dropdown is-open="status.isopen" ng-if="parameter.name === 'locations' || parameter.name === 'location'" uib-tooltip="{{parameter.description}}" tooltip-placement="right">
+                    <button id="single-button" type="button" class="btn btn-select-dropdown" uib-dropdown-toggle ng-disabled="disabled">
+                        {{vm.selectedLocation.displayName || vm.selectedLocation.name || "Select a location" }} <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" uib-dropdown-menu role="menu" aria-labelledby="single-button">
+                        <li role="menuitem" ng-repeat="location in vm.locations">
+                            <a href="" ng-click="vm.selectedLocation = location; parameter.value = location.name;"
+                               ng-class="{'selected' : location.name === vm.selectedLocation.name} ">{{location.displayName || location.name}}</a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div ng-if="parameter.name !== 'locations' && parameter.name !== 'location'">
+                    <div ng-switch="parameter.type">
+                        <input ng-switch-when="java.lang.Boolean" uib-tooltip="{{parameter.description}}"
+                               tooltip-placement="right"
+                               type="checkbox"
+                               ng-model="parameter.value"/>
+                        <textarea ng-switch-default uib-tooltip="{{parameter.description}}"
+                                  tooltip-placement="right"
+                                  class="form-control"
+                                  ng-model="parameter.value"
+                                  rows="1" msd-elastic>
+                        </textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <br ng-if="vm.cli"/>
+    <section ng-if="vm.cli">
+        <h3>CLI</h3>
+        <div class="cli-content">
+            <span class="extras">
+                <button class="btn copy-btn btn-default btn-sm" ngclipboard ngclipboard-success="onClipboardSuccess(e)"
+                        data-clipboard-text="{{brCmd()}}" uib-tooltip="Copied!"
+                        tooltip-trigger="{'copied': 'mouseleave'}" tooltip-placement="left"
+                        tooltip-append-to-body="true">
+                    <i class="fa fa-clipboard"></i>
+                </button>
+            </span>
+            <pre>{{brCmd()}}</pre>
+        </div>
+    </section>
+    <section ng-if="vm.cli">
+        <h3>API</h3>
+        <div class="cli-content">
+            <span class="extras">
+                <button class="btn copy-btn btn-default btn-sm" ngclipboard ngclipboard-success="onClipboardSuccess(e)"
+                        data-clipboard-text="{{curlCmd()}}" uib-tooltip="Copied!"
+                        tooltip-trigger="{'copied': 'mouseleave'}" tooltip-placement="left"
+                        tooltip-append-to-body="true">
+                    <i class="fa fa-clipboard"></i>
+                </button>
+            </span>
+            <pre>{{curlCmd()}}</pre>
+        </div>
+    </section>
+</div>
+<div class="modal-footer" ng-if="!vm.cli">
+    <div class="alert alert-danger text-left" ng-if="error">{{vm.error}}</div>
+    <br-button on-click="vm.confirmInvoke()" type="btn-success">Confirm</br-button>
+</div>

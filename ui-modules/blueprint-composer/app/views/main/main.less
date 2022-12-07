@@ -1,0 +1,127 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+@import "./bottom-sheet.less";
+
+.navbar-mode {
+  background: #555;
+  border: none;
+  border-radius: 0;
+  border-color: @navbar-default-border;
+  z-index: 50;
+  
+  .container-fluid.flush-left {
+    padding-left: 0;
+  }
+
+  .navbar-nav > li > a {
+    color: @gray-lighter;
+    padding-bottom: 10px;
+    border-bottom: 5px solid transparent;
+  }
+
+  .navbar-nav-mode > .active > a,
+  .navbar-nav-mode > .active > a:hover,
+  .navbar-nav-mode > .active > a:focus {
+    border-bottom: 5px solid @primary-light;
+    background-color: #666666;
+
+    & > i.fa {
+      color: @primary-light;
+    }
+  }
+  
+  custom-action {
+    margin-left: 8px;
+  }
+}
+
+.page-main-area {
+  position: relative;
+
+  .modes {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    .btn-primary {
+      border: 1px solid transparent;
+    }
+    a[disabled] {
+      pointer-events: none;
+    }
+  }
+  .layer a {
+    cursor: pointer;
+    color: @gray-light;
+    transition: color 0.3s ease;
+    &:hover {
+      color: @gray-dark;
+    }
+  }
+  .layer.active a {
+    color: @brand-primary;
+    &:hover {
+      color: @brand-primary;
+    }
+  }
+  .dropdown-header {
+    background: @gray;
+    color: @gray-lighter;
+    font-weight: bold;
+    text-align: center;
+    padding-top: 7px;
+  }
+  .dropdown-menu {
+    width: inherit;
+  }
+  .tab-content {
+    width: 100%;
+    background: transparent;
+    border: none;
+    margin: 0;
+
+    .tab-pane {
+      padding: 0;
+    }
+  }
+  .actions {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 100;
+    custom-action {
+      margin-left: 5px;
+    }
+  }
+}
+
+
+.flex {
+    display: flex;
+}
+
+.hand {
+  cursor: pointer;
+}
+
+.snackbar-top-right {
+  bottom: auto;
+  left: auto;
+  top: 115px;
+}
